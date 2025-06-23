@@ -13,6 +13,11 @@ public class TCP_Server
     private TcpListener listener;
     // This lists helps keep track of the list of the connected clients 
     private List<TcpClient> clients = new List<TcpClient>();
+    // I also need a dictionary to associate a client object with their name
+    private Dictionary<TcpClient, string> client_names = new Dictionary<TcpClient, string>();
+
+    // I need to add a way of reusing the same writer and not creating a new instance everytime a message is sent
+    private Dictionary<TcpClient, StreamWriter> client_writers = new Dictionary<TcpClient, StreamWriter>();
 
     public void Start_Server(int port)
     // This function here is reponisble for intialising and staring the server
@@ -50,8 +55,10 @@ public class TCP_Server
         }
     }
 
+
     private void Handle_Client(TcpClient client)
     {
+
         // Network Steam is used to either send or receive messages
         NetworkStream stream = client.GetStream();
 
@@ -60,10 +67,24 @@ public class TCP_Server
         // Not individual characters
 
         StreamReader reader = new StreamReader(stream);
-        StreamWriter writer = new StreamWriter(stream){ AutoFlush = true };
+        StreamWriter writer = new StreamWriter(stream) { AutoFlush = true };
+        client_writers[client] = writer;
 
         // Welcome Message
-        writer.WriteLine("Welcome to the server!");
+        // writer.WriteLine("Welcome to the server!");
+        string client_name = reader.ReadLine();
+        client_names[client] = client_name;
+
+        Console.WriteLine($"{client_name} has connected.");
+        writer.WriteLine($"Welcome to the server, {client_name}!");
+
+        // I also want to add a way to know who is currently in the server
+        string userList = "Current clients: " + string.Join(", ", client_names.Values);
+        writer.WriteLine(userList);
+
+        // This notifies existing users about a new one
+        Broadcast_Join_Message(client, client_name);
+
 
 
         try
@@ -74,36 +95,86 @@ public class TCP_Server
                 if (message == null)
                     break; // Client disconnects if no message is detected
 
-                Console.WriteLine("Received: " + message);
+                // Console.WriteLine("Received: " + message);
+                Console.WriteLine($"{client_name} says: {message}");
 
                 // Still Echoing the message back to the client for debugging purposes
-                writer.WriteLine("Echo: " + message);
+                // writer.WriteLine("Echo: " + message);
+
+                Broadcast_Message(client, client_name, message);
             }
         }
 
         catch (Exception ex)
         {
-            Console.WriteLine("There was an error communcating with the client");
+            Console.WriteLine($"There was an error communcating with the {client_name}");
         }
 
         finally
         {
+            // I need to make sure to close the stream and remove the clients
             stream.Close();
             client.Close();
             clients.Remove(client);
-            Console.WriteLine("Client has disconnected. ");
+            Console.WriteLine($"{client_name} has disconnected.");
+            client_names.Remove(client);
+            client_writers.Remove(client);
+
         }
-        
-            
 
-        
+    }
 
+    private void Broadcast_Message(TcpClient sender, string sender_name, string message)
+    {
+        // Since I want to send this to every client, I can iterate over clients list
+        // To make sure I send the message to all of them
 
+        foreach (TcpClient client in clients)
+        {
+            try
+            {
+                StreamWriter client_writer = client_writers[client]; //Use stored writer instead of creating a new one
+
+                if (client == sender)
+                {
+                    client_writer.WriteLine($"✉️ - You: {message}");
+                }
+
+                else
+                {
+                    client_writer.WriteLine($"✉️ - {sender_name}: {message}");
+                }
+            }
+
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error has occured - Failed to send message to a client: {ex.Message}");
+            }
+
+        }
+    }
+
+    private void Broadcast_Join_Message(TcpClient new_client, string new_client_name)
+    {
+        // Broadcast to all clients except the one who just joined
+        foreach (TcpClient client in clients)
+        {
+            if (client == new_client) continue;
+
+            try
+            {
+                StreamWriter writer = client_writers[client];
+                writer.WriteLine($"📢 {new_client_name} has joined the server.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error occured when broadcasting join message: {ex.Message}");
+            }
+        }
     }
 }          
 
         
-
 class Program
 {
     static void Main()
