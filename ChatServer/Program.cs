@@ -21,8 +21,11 @@ public class TCP_Server
         listener.Start();
         Console.WriteLine("The Server has started!");
         Console.WriteLine("Waiting for Connections........");
-        Accept_Clients();
 
+        // Without threading, I'm blocking new clients from connecting to the server
+        // So I must make every Client connection on a new thread
+        Thread client_thread = new Thread(Accept_Clients);
+        client_thread.Start();
     }
 
     private void Accept_Clients()
@@ -35,7 +38,9 @@ public class TCP_Server
                 TcpClient client = listener.AcceptTcpClient();
                 clients.Add(client);
                 Console.WriteLine("A Client has connected.");
-                Handle_Client(client);
+
+                Thread handle_client_thread = new Thread(() => Handle_Client(client));
+                handle_client_thread.Start();
             }
 
             catch (Exception ex)
@@ -49,28 +54,36 @@ public class TCP_Server
     {
         // Network Steam is used to either send or receive messages
         NetworkStream stream = client.GetStream();
-        byte[] buffer = new byte[1024];
-        int received_bytes;
+
+        // I was converting bytes manually before and having to deal with buffer mangagement
+        // By using StreamReader and StreamWriter so that I can receive and send how lines
+        // Not individual characters
+
+        StreamReader reader = new StreamReader(stream);
+        StreamWriter writer = new StreamWriter(stream){ AutoFlush = true };
+
+        // Welcome Message
+        writer.WriteLine("Welcome to the server!");
+
 
         try
         {
-            byte[] welcome_message = Encoding.Default.GetBytes("Welcome to the Server");
-            stream.Write(welcome_message, 0, welcome_message.Length); // Sends welcome message to Client
-
-            while ((received_bytes = stream.Read(buffer, 0, buffer.Length)) > 0)
+            while (client.Connected)
             {
-                string message = Encoding.Default.GetString(buffer, 0, received_bytes);
+                string message = reader.ReadLine();
+                if (message == null)
+                    break; // Client disconnects if no message is detected
+
                 Console.WriteLine("Received: " + message);
 
-                // This ecodes the messsage back to the client which will be useful for debugging
-                byte[] response = Encoding.Default.GetBytes("Echo: " + message);
-                stream.Write(response, 0, response.Length);
+                // Still Echoing the message back to the client for debugging purposes
+                writer.WriteLine("Echo: " + message);
             }
         }
 
         catch (Exception ex)
         {
-            Console.WriteLine("There was an Error when handling the client: " + ex.Message);
+            Console.WriteLine("There was an error communcating with the client");
         }
 
         finally
@@ -78,8 +91,93 @@ public class TCP_Server
             stream.Close();
             client.Close();
             clients.Remove(client);
-            Console.WriteLine("Client disconnected.");
+            Console.WriteLine("Client has disconnected. ");
         }
+        
+            
+
+        
+
+
+    }
+}          
+
+        
+
+class Program
+{
+    static void Main()
+    {
+        TCP_Server my_server = new TCP_Server();
+        my_server.Start_Server(2025); // This port can be anything
+
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//private void Handle_Client(TcpClient client)
+   // {
+        // Network Steam is used to either send or receive messages
+        // NetworkStream stream = client.GetStream();
+        // StreamReader reader = new StreamReader(stream);
+        // StreamWriter writer = new StreamWriter(stream);
+
+        // byte[] buffer = new byte[1024];
+        // int received_bytes;
+
+        // try
+        // {
+        //     byte[] welcome_message = Encoding.Default.GetBytes("Welcome to the Server");
+        //     stream.Write(welcome_message, 0, welcome_message.Length); // Sends welcome message to Client
+
+        //     while ((received_bytes = stream.Read(buffer, 0, buffer.Length)) > 0)
+        //     {
+        //         string message = Encoding.Default.GetString(buffer, 0, received_bytes);
+        //         Console.WriteLine("Received: " + message);
+
+        //         // This ecodes the messsage back to the client which will be useful for debugging
+        //         byte[] response = Encoding.Default.GetBytes("Echo: " + message);
+        //         stream.Write(response, 0, response.Length);
+        //     }
+        // }
+
+        // catch (Exception ex)
+        // {
+        //     Console.WriteLine("There was an Error when handling the client: " + ex.Message);
+        // }
+
+        // finally
+        // {
+        //     stream.Close();
+        //     client.Close();
+        //     clients.Remove(client);
+        //     Console.WriteLine("Client disconnected.");
+        // }
 
 
 
@@ -97,20 +195,4 @@ public class TCP_Server
         // }
 
 
-    }
-}          
-
-            
-
-    
-
-
-class Program
-{
-    static void Main()
-    {
-        TCP_Server my_server = new TCP_Server();
-        my_server.Start_Server(2025); // This port can be anything
-
-    }
-}
+   // }
