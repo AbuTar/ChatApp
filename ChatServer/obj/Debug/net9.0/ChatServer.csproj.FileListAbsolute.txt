@@ -12,3 +12,4 @@ C:\Users\Abubaker\desktop\files\coding\ChatApp\ChatServer\obj\Debug\net9.0\refin
 C:\Users\Abubaker\desktop\files\coding\ChatApp\ChatServer\obj\Debug\net9.0\ChatServer.pdb
 C:\Users\Abubaker\desktop\files\coding\ChatApp\ChatServer\obj\Debug\net9.0\ChatServer.genruntimeconfig.cache
 C:\Users\Abubaker\desktop\files\coding\ChatApp\ChatServer\obj\Debug\net9.0\ref\ChatServer.dll
+c:\Users\Abubaker\Desktop\Files\Coding\ChatApp\ChatServer\obj\Debug\net9.0\ChatServer.sourcelink.json

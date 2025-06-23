@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Abubaker\\desktop\\files\\coding\\ChatApp\\ChatServer\\ChatServer.csproj": {}
+    "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Abubaker\\desktop\\files\\coding\\ChatApp\\ChatServer\\ChatServer.csproj": {
+    "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Abubaker\\desktop\\files\\coding\\ChatApp\\ChatServer\\ChatServer.csproj",
+        "projectUniqueName": "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj",
         "projectName": "ChatServer",
-        "projectPath": "C:\\Users\\Abubaker\\desktop\\files\\coding\\ChatApp\\ChatServer\\ChatServer.csproj",
+        "projectPath": "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj",
         "packagesPath": "C:\\Users\\Abubaker\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Abubaker\\desktop\\files\\coding\\ChatApp\\ChatServer\\obj\\",
+        "outputPath": "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
