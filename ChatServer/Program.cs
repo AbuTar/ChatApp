@@ -363,14 +363,383 @@ public class TCP_File_Transfer_Server
 }
 
 
+// public class TCP_TicTacToe_Server
+// {
+//     // This class helps implement logic for a basic client-server game of tic-tac-toe
+//     private TcpListener _listener;
+
+//     public void Start_Server(int port)
+//     {
+//         _listener = new TcpListener(IPAddress.Any, port);
+//         _listener.Start();
+
+//         Console.WriteLine($"The Tic Tac Toe Server has Started.\n Waiting for player...");
+
+//         Thread accept_thread = new Thread(Accept_Clients);
+//         accept_thread.Start();
+//     }
+
+//     private void Accept_Clients()
+//     {
+//         while (true)
+//         {
+//             try
+//             {
+//                 TcpClient client = _listener.AcceptTcpClient();
+//                 Console.WriteLine("A player connected for Tic Tac Toe.");
+
+//                 Thread client_thread = new Thread(() => Handle_Client(client));
+//                 client_thread.Start();
+//             }
+//             catch (Exception ex)
+//             {
+//                 Console.WriteLine("There was an error accepting the client: " + ex.Message);
+//             }
+//         }
+//     }
+
+//     private void Handle_Client(TcpClient client)
+//     {
+//         NetworkStream client_stream = client.GetStream();
+//         StreamReader client_reader = new StreamReader(client_stream);
+//         StreamWriter client_writer = new StreamWriter(client_stream) { AutoFlush = true };
+
+//         // This initialises the game board
+//         // Characters 1-9 will be used to represent the different squares on the Grid
+//         char[] board_state = "123456789".ToCharArray();
+//         char player_symbol = 'X';
+//         char server_symbol = 'O';
+//         bool game_ended = false;
+
+//         client_writer.WriteLine("Welcome to Tic Tac Toe!");
+//         client_writer.WriteLine("You are X, server is O.");
+//         Display_Board(client_writer, board_state);
+
+//         Random rnd = new Random();
+
+//         while (!game_ended)
+//         {
+//             // I need to ask the Client for their move every turn so will need to be using the client reader
+//             client_writer.WriteLine("Your move (1-9):");
+//             string move_input = client_reader.ReadLine();
+
+//             if (move_input == null)
+//             {
+//                 // Need to handle errors gracefully
+//                 Console.WriteLine("Player disconnected unexpectedly.");
+//                 break;
+//             }
+
+//             if (!int.TryParse(move_input, out int player_move) || player_move < 1 || player_move > 9)
+//             {
+//                 // Rejects invalid player moves
+//                 client_writer.WriteLine("Invalid input. Please enter a number between 1 and 9.");
+//                 continue;
+//             }
+
+//             if (board_state[player_move - 1] == 'X' || board_state[player_move - 1] == 'O')
+//             {
+//                 // Prevents overwritting a square on a grid
+//                 client_writer.WriteLine("That spot is already taken. Try again.");
+//                 continue;
+//             }
+
+//             board_state[player_move - 1] = player_symbol;
+//             Display_Board(client_writer, board_state);
+
+//             // Now I need to check if a plyer has won or if the game has ended in a tie
+//             if (Check_Win(board_state, player_symbol))
+//             {
+//                 client_writer.WriteLine("Congratulations, you win!");
+//                 game_ended = true;
+//                 break;
+//             }
+
+//             if (Is_Board_Full(board_state))
+//             {
+//                 client_writer.WriteLine("Game ended in a draw!");
+//                 game_ended = true;
+//                 break;
+//             }
+
+//             // Whilst I would have liked to implement AI into this, I haven't yet figured it out
+//             // Therefor the server makes random moves
+//             List<int> available_moves = new List<int>();
+//             for (int i = 0; i < 9; i++)
+//             {
+//                 if (board_state[i] != 'X' && board_state[i] != 'O')
+//                     available_moves.Add(i);
+//             }
+
+//             if (available_moves.Count == 0)
+//             {
+//                 client_writer.WriteLine("Game ended in a draw!");
+//                 game_ended = true;
+//                 break;
+//             }
+
+//             int server_move = available_moves[rnd.Next(available_moves.Count)];
+//             board_state[server_move] = server_symbol;
+
+//             client_writer.WriteLine("Server made its move:");
+//             Display_Board(client_writer, board_state);
+
+//             if (Check_Win(board_state, server_symbol))
+//             {
+//                 client_writer.WriteLine("Server wins! Better luck next time.");
+//                 game_ended = true;
+//                 break;
+//             }
+
+//             if (Is_Board_Full(board_state))
+//             {
+//                 client_writer.WriteLine("Game ended in a draw!");
+//                 game_ended = true;
+//                 break;
+//             }
+//         }
+
+//         client_writer.WriteLine("Game over. Disconnecting...");
+//         client_stream.Close();
+//         client.Close();
+//         Console.WriteLine("Player disconnected from Tic Tac Toe.");
+//     }
+
+//     private void Display_Board(StreamWriter writer, char[] board)
+//     {
+//         writer.WriteLine();
+//         writer.WriteLine($" {board[0]} | {board[1]} | {board[2]} ");
+//         writer.WriteLine("---+---+---");
+//         writer.WriteLine($" {board[3]} | {board[4]} | {board[5]} ");
+//         writer.WriteLine("---+---+---");
+//         writer.WriteLine($" {board[6]} | {board[7]} | {board[8]} ");
+//         writer.WriteLine();
+//     }
+
+//     private bool Check_Win(char[] board, char symbol)
+//     {
+//         int[,] winning_positions = new int[,]
+//         {
+//             // This contains the different winning positions
+//             { 0,1,2}, {3,4,5}, {6,7,8}, // 3 in a row
+//             {0,3,6}, {1,4,7}, {2,5,8}, // 3 in a column
+//             {0,4,8}, {2,4,6}           //  3 diagonally
+//         };
+
+//         for (int i = 0; i < winning_positions.GetLength(0); i++)
+//         {
+//             if (board[winning_positions[i, 0]] == symbol &&
+//                 board[winning_positions[i, 1]] == symbol &&
+//                 board[winning_positions[i, 2]] == symbol)
+//             {
+//                 return true;
+//             }
+//         }
+//         return false;
+//     }
+
+//     private bool Is_Board_Full(char[] board)
+//     {
+//         foreach (char c in board)
+//         {
+//             if (c != 'X' && c != 'O') return false;
+//         }
+//         return true;
+//     }
+// }
+
+public class TCP_TicTacToe_Server
+{
+    private TcpListener _listener;
+
+    public void Start_Server(int port)
+    {
+        _listener = new TcpListener(IPAddress.Any, port);
+        _listener.Start();
+
+        Console.WriteLine("The Tic Tac Toe Server has Started.\nWaiting for players...");
+
+        Thread accept_thread = new Thread(Accept_Clients);
+        accept_thread.Start();
+    }
+
+    private void Accept_Clients()
+    {
+        while (true)
+        {
+            try
+            {
+                TcpClient player1 = _listener.AcceptTcpClient();
+                Console.WriteLine("Player 1 connected.");
+
+                TcpClient player2 = _listener.AcceptTcpClient();
+                Console.WriteLine("Player 2 connected.");
+
+                Thread game_thread = new Thread(() => Handle_Game(player1, player2));
+                game_thread.Start();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error accepting players: " + ex.Message);
+            }
+        }
+    }
+
+    private void Handle_Game(TcpClient player1, TcpClient player2)
+    {
+        NetworkStream stream1 = player1.GetStream();
+        StreamReader reader1 = new StreamReader(stream1);
+        StreamWriter writer1 = new StreamWriter(stream1) { AutoFlush = true };
+
+        NetworkStream stream2 = player2.GetStream();
+        StreamReader reader2 = new StreamReader(stream2);
+        StreamWriter writer2 = new StreamWriter(stream2) { AutoFlush = true };
+
+        char[] board = "123456789".ToCharArray();
+        char symbol1 = 'X';
+        char symbol2 = 'O';
+        bool gameEnded = false;
+
+        writer1.WriteLine("Welcome Player 1. You are X.");
+        writer2.WriteLine("Welcome Player 2. You are O.");
+        Broadcast_Board(writer1, writer2, board);
+
+        StreamReader currentReader = reader1;
+        StreamWriter currentWriter = writer1;
+        StreamWriter opponentWriter = writer2;
+        char currentSymbol = symbol1;
+
+        while (!gameEnded)
+        {
+            currentWriter.WriteLine("Your move (1-9):");
+            opponentWriter.WriteLine("Waiting for opponent to move...");
+
+            string move = currentReader.ReadLine();
+            if (move == null)
+            {
+                currentWriter.WriteLine("Connection lost.");
+                opponentWriter.WriteLine("Opponent disconnected. You win by default.");
+                break;
+            }
+
+            if (!int.TryParse(move, out int position) || position < 1 || position > 9)
+            {
+                currentWriter.WriteLine("Invalid input. Please enter a number between 1 and 9.");
+                continue;
+            }
+
+            if (board[position - 1] == 'X' || board[position - 1] == 'O')
+            {
+                currentWriter.WriteLine("That spot is already taken. Try again.");
+                continue;
+            }
+
+            board[position - 1] = currentSymbol;
+            Broadcast_Board(writer1, writer2, board);
+
+            if (Check_Win(board, currentSymbol))
+            {
+                currentWriter.WriteLine("Congratulations, you win!");
+                opponentWriter.WriteLine("You lose! Better luck next time.");
+                gameEnded = true;
+                break;
+            }
+
+            if (Is_Board_Full(board))
+            {
+                writer1.WriteLine("Game ended in a draw!");
+                writer2.WriteLine("Game ended in a draw!");
+                break;
+            }
+
+            // Swap turn
+            if (currentReader == reader1)
+            {
+                currentReader = reader2;
+                currentWriter = writer2;
+                opponentWriter = writer1;
+                currentSymbol = symbol2;
+            }
+            else
+            {
+                currentReader = reader1;
+                currentWriter = writer1;
+                opponentWriter = writer2;
+                currentSymbol = symbol1;
+            }
+        }
+
+        writer1.WriteLine("Game over. Disconnecting...");
+        writer2.WriteLine("Game over. Disconnecting...");
+        stream1.Close(); stream2.Close();
+        player1.Close(); player2.Close();
+
+        Console.WriteLine("A game session has ended.");
+    }
+
+    private void Broadcast_Board(StreamWriter w1, StreamWriter w2, char[] board)
+    {
+        string[] lines =
+        {
+            "",
+            $" {board[0]} | {board[1]} | {board[2]} ",
+            "---+---+---",
+            $" {board[3]} | {board[4]} | {board[5]} ",
+            "---+---+---",
+            $" {board[6]} | {board[7]} | {board[8]} ",
+            ""
+        };
+
+        foreach (var line in lines)
+        {
+            w1.WriteLine(line);
+            w2.WriteLine(line);
+        }
+    }
+
+    private bool Check_Win(char[] board, char symbol)
+    {
+        int[,] winning_positions = new int[,]
+        {
+            { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 }, // Rows
+            { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, // Columns
+            { 0, 4, 8 }, { 2, 4, 6 }              // Diagonals
+        };
+
+        for (int i = 0; i < winning_positions.GetLength(0); i++)
+        {
+            if (board[winning_positions[i, 0]] == symbol &&
+                board[winning_positions[i, 1]] == symbol &&
+                board[winning_positions[i, 2]] == symbol)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private bool Is_Board_Full(char[] board)
+    {
+        foreach (char c in board)
+        {
+            if (c != 'X' && c != 'O') return false;
+        }
+        return true;
+    }
+}
+
+
+
+
 class Program
 {
     static void Main()
     {
         Console.WriteLine("\nWelcome to the Multi-Service Server");
         Console.WriteLine("1 - Launch Messaging Server");
-        Console.WriteLine("2 - Launch File Transfer Server");
-        Console.WriteLine("3 - Exit");
+        Console.WriteLine("2 - Launch File Transfer Server - Coming Soon");
+        Console.WriteLine("3 - Play Tic Tac Toe");
+        Console.WriteLine("4 - Exit");
         Console.WriteLine("Please enter your Choice:  ");
         while (true)
         {
@@ -391,6 +760,12 @@ class Program
                     break;
 
                 case "3":
+                    TCP_TicTacToe_Server my_server = new TCP_TicTacToe_Server();
+                    my_server.Start_Server(2026);
+                    break;
+
+
+                case "4":
                     Console.WriteLine("Exiting....");
                     return;
 

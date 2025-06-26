@@ -271,6 +271,193 @@ public class File_Transfer_Client
 
 }
 
+public class TCP_TicTacToe_Client
+{
+    private TcpClient client;
+    private StreamReader client_reader;
+    private StreamWriter client_writer;
+    private NetworkStream client_stream;
+    private bool is_running = true;
+
+    public void Connect_To_Server(string server_ip, int server_port)
+    {
+        try
+        {
+            client = new TcpClient(server_ip, server_port);
+            client_stream = client.GetStream();
+            client_reader = new StreamReader(client_stream);
+            client_writer = new StreamWriter(client_stream) { AutoFlush = true };
+
+            Console.WriteLine("You have connected successfully to the Server");
+
+            Thread receive_thread = new Thread(Receive_Messages);
+            receive_thread.Start();
+
+            while (is_running)
+            {
+                string user_input = Console.ReadLine();
+
+                if (user_input.Trim().ToLower() == "exit")
+                {
+                    Console.WriteLine("Disconnecting from the Tic Tac Toe Server");
+                    Disconnect();
+                    break;
+                }
+
+                if (!string.IsNullOrWhiteSpace(user_input))
+                {
+                    client_writer.WriteLine(user_input);
+                }
+            }
+        }
+
+        catch (Exception ex)
+        {
+            Console.WriteLine("You have failed to connect or lost connection to the Server");
+            Disconnect();
+        }
+    }
+
+    private void Receive_Messages()
+    {
+        try
+        {
+            string server_message;
+
+            while ((server_message = client_reader.ReadLine()) != null)
+            {
+                Console.WriteLine(server_message);
+
+                if (server_message.ToLower().Contains("your move"))
+                {
+                    Console.Write("Enter your move (1-9): ");
+                }
+
+                if (server_message.ToLower().Contains("game over") ||
+                    server_message.ToLower().Contains("you win") ||
+                    server_message.ToLower().Contains("draw") ||
+                    server_message.ToLower().Contains("server wins"))
+                {
+                    is_running = false;
+                }
+            }
+        }
+
+        catch (Exception ex)
+        {
+            Console.WriteLine("You have beend disconnected from the Server: " + ex.Message);
+        }
+
+        finally
+        {
+            Disconnect();
+        }
+    }
+
+    private void Disconnect()
+    {
+        client_stream.Close();
+        client_reader.Close();
+        client_writer.Close();
+        client.Close();
+        Environment.Exit(0);
+    }
+}
+
+// public class TCP_TicTacToe_Client
+// {
+//     private TcpClient client;
+//     private StreamReader client_reader;
+//     private StreamWriter client_writer;
+//     private NetworkStream client_stream;
+//     private bool is_running = true;
+
+//     public void Connect_To_Server(string server_ip, int server_port)
+//     {
+//         try
+//         {
+//             client = new TcpClient(server_ip, server_port);
+//             client_stream = client.GetStream();
+//             client_reader = new StreamReader(client_stream);
+//             client_writer = new StreamWriter(client_stream) { AutoFlush = true };
+
+//             Console.WriteLine("You have connected successfully to the Server");
+
+//             Thread receive_thread = new Thread(Receive_Messages);
+//             receive_thread.Start();
+
+//             while (is_running)
+//             {
+//                 string user_input = Console.ReadLine();
+
+//                 if (user_input.Trim().ToLower() == "exit")
+//                 {
+//                     Console.WriteLine("Disconnecting from the Tic Tac Toe Server");
+//                     Disconnect();
+//                     break;
+//                 }
+
+//                 if (!string.IsNullOrWhiteSpace(user_input))
+//                 {
+//                     client_writer.WriteLine(user_input);
+//                 }
+//             }
+//         }
+
+//         catch (Exception ex)
+//         {
+//             Console.WriteLine("You have failed to connect or lost connection to the Server");
+//             Disconnect();
+//         }
+//     }
+
+//     private void Receive_Messages()
+//     {
+//         try
+//         {
+//             string server_message;
+
+//             while ((server_message = client_reader.ReadLine()) != null)
+//             {
+//                 Console.WriteLine(server_message);
+
+//                 if (server_message.ToLower().Contains("your move"))
+//                 {
+//                     Console.Write("Enter your move (1-9): ");
+//                 }
+
+//                 if (server_message.ToLower().Contains("game over") ||
+//                     server_message.ToLower().Contains("you win") ||
+//                     server_message.ToLower().Contains("draw") ||
+//                     server_message.ToLower().Contains("you lose") ||
+//                     server_message.ToLower().Contains("opponent disconnected"))
+//                 {
+//                     is_running = false;
+//                 }
+//             }
+//         }
+
+//         catch (Exception ex)
+//         {
+//             Console.WriteLine("You have been disconnected from the Server: " + ex.Message);
+//         }
+
+//         finally
+//         {
+//             Disconnect();
+//         }
+//     }
+
+//     private void Disconnect()
+//     {
+//         client_stream?.Close();
+//         client_reader?.Close();
+//         client_writer?.Close();
+//         client?.Close();
+//         Environment.Exit(0);
+//     }
+// }
+
 
 
 class Program
@@ -283,7 +470,8 @@ class Program
             Console.WriteLine("\nWelcome to the Multi-Service Client");
             Console.WriteLine("1 - Connect to Messaging Server");
             Console.WriteLine("2 - Connect to File Transfer Server");
-            Console.WriteLine("3 - Exit");
+            Console.WriteLine("3 - Connect to Tic Tac Toe Server");
+            Console.WriteLine("4 - Exit");
             Console.WriteLine("Please enter your Choice:  ");
             string user_choice = Console.ReadLine();
 
@@ -301,6 +489,11 @@ class Program
                     break;
 
                 case "3":
+                    TCP_TicTacToe_Client client = new TCP_TicTacToe_Client();
+                    client.Connect_To_Server("127.0.0.1", 2026);
+                    break;
+
+                case "4":
                     Console.WriteLine("Exiting....");
                     return;
 
@@ -311,7 +504,7 @@ class Program
             }
         }
 
-    
+
         // Messaging_Client client = new Messaging_Client();
         // client.Connect_To_Server("127.0.0.1", 2025);
 
