@@ -11,3 +11,9 @@ The server is reponsible for:
 - Accept multiple clients using a seperate thread for each one
 - Read a message from a client
 - Echo the message back to the client
+
+### What is possible?
+You can:
+- Message using a basic client-server chat server
+- Send Files (incoming)
+- Play Tic Tac Toe
