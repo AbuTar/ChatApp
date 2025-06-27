@@ -2,6 +2,7 @@
 // 1 - Listening to incoming client connections
 // 2 - Routing messages between clients
 
+using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
@@ -363,9 +364,237 @@ public class TCP_File_Transfer_Server
 }
 
 
+public class TCP_TicTacToe_Server
+{
+    private TcpListener listener;
+
+    public void Start_Server(int port)
+    {
+        // Same as before, code that initialises the Server
+        listener = new TcpListener(IPAddress.Any, port);
+        listener.Start();
+
+        Console.WriteLine("The Tic Tac Toe Server has Started");
+        Console.WriteLine("Waiting for Players");
+
+        Thread accept_thread = new Thread(Accept_Clients);
+        accept_thread.Start();
+    }
+
+    public void Accept_Clients()
+    {
+        while (true)
+        {
+            try
+            {
+                // Once the users connect to the server, the game can begin
+                // Handle the game (and the different users) on a seperate thread
+
+                TcpClient player_1 = listener.AcceptTcpClient();
+                Console.WriteLine("Player 1 has connected to the Server.");
+
+                TcpClient player_2 = listener.AcceptTcpClient();
+                Console.WriteLine("Player 2 has connected to the Server.");
+
+                Console.WriteLine("Starting...");
+
+                Thread game_thread = new Thread(() => Handle_Game(player_1, player_2));
+                game_thread.Start();
+            }
+
+            catch (Exception ex)
+            {
+                Console.WriteLine("An error occured when accepting Players: " + ex.Message);
+            }
+        }
+    }
+
+    private void Handle_Game(TcpClient player_1, TcpClient player_2)
+    {
+        // Both players require seperate streams to send and receive data
+        // Player 1
+        NetworkStream player_1_stream = player_1.GetStream();
+        StreamReader player_1_reader = new StreamReader(player_1_stream);
+        StreamWriter player_1_writer = new StreamWriter(player_1_stream) { AutoFlush = true };
+
+        // Player 2
+        NetworkStream player_2_stream = player_2.GetStream();
+        StreamReader player_2_reader = new StreamReader(player_2_stream);
+        StreamWriter player_2_writer = new StreamWriter(player_2_stream) { AutoFlush = true };
+
+        // Board Logic
+        char[] board = "123456789".ToCharArray();
+        char symbol_X = 'X';
+        char symbol_O = 'O';
+        bool game_ended = false;
+
+        player_1_writer.WriteLine($"Welcome Player 1! You are {symbol_X}");
+        player_2_writer.WriteLine($"Welcome Player 2! You are {symbol_O}");
+
+        // Now I need to broadcast every move to both Player 1 and Player 2
+        // I'll handle this logic in a different method - Broadcast Board
+        BroadCast_Board(player_1_writer, player_2_writer, board);
+
+        // If I make player 1 current and I make player 2 the opponent
+        // It makes the following easier
+        StreamReader current_reader = player_1_reader;
+        StreamWriter current_writer = player_1_writer;
+        StreamWriter opponent_writer = player_2_writer;
+        char current_symbol = symbol_X;
+
+
+        while (!game_ended)
+        {
+            current_writer.WriteLine("Your Move (1-9): ");
+            opponent_writer.WriteLine("Waiting for the Opponent to Move...");
+
+            string move = current_reader.ReadLine();
+            // Incase of a disconnection or error
+            // Now to handle the different potential user errors that could occur
+            if (move == null)
+            {
+                current_writer.WriteLine("Your connection with the server has been Lost.");
+                opponent_writer.WriteLine("Your opponent has disconnected - you win by default");
+                break;
+            }
+
+            if (!int.TryParse(move, out int position) || position < 1 || position > 9)
+            {
+                current_writer.WriteLine("That was an invalid move. Please enter a valid move");
+                continue;
+            }
+
+            if (board[position - 1] == 'X' || board[position] == 'O')
+            {
+                current_writer.WriteLine("This spot is already taken - Try again.");
+                continue;
+            }
+
+            board[position - 1] = current_symbol;
+            BroadCast_Board(player_1_writer, player_2_writer, board);
+
+            // Now I need to handle the game-ending logic
+            // This involves:
+            // Draws
+            // Losses
+
+            if (Win_Check(board, current_symbol))
+            {
+                current_writer.WriteLine("Congratulations, you win!");
+                opponent_writer.WriteLine("You lose! Better luck next time.");
+                game_ended = true;
+                break;
+            }
+
+            if (Is_Board_Full(board))
+            {
+                player_1_writer.WriteLine("The game has ended in a draw!");
+                player_2_writer.WriteLine("The game has ended in a draw");
+                break;
+            }
+
+            // So far this program would only allow player 1 to enter moves
+            // To deal with this we need to swap player 1 and player 2 around
+            // player 1 --> oppoent
+            // player 2 --> current player
+
+            // Swapping Players
+
+            if (current_reader == player_1_reader)
+            {
+                current_reader = player_2_reader;
+                current_writer = player_2_writer;
+                opponent_writer = player_1_writer;
+                current_symbol = symbol_O;
+            }
+
+            else
+            {
+                current_reader = player_1_reader;
+                current_writer = player_1_writer;
+                opponent_writer = player_2_writer;
+                current_symbol = symbol_X;
+            }
+        }
+
+        // Once the game is over, both clients need to know and be disconnected
+        player_1_writer.WriteLine("Game Over. Now Disconnecting...");
+        player_2_writer.WriteLine("Game Over. Now Disconnecting...");
+        player_1_stream.Close();
+        player_2_stream.Close();
+        player_1.Close();
+        player_2.Close();
+
+        Console.WriteLine("The Game Session has ended. ");
+
+    }
+
+    private void BroadCast_Board(StreamWriter writer_1, StreamWriter writer_2, char[] board) 
+    {
+        // Basic function to display the game board to both players
+        string[] rows =
+         {
+             "",
+             $" {board[0]} | {board[1]} | {board[2]} ",
+             "---+---+---",
+             $" {board[3]} | {board[4]} | {board[5]} ",
+             "---+---+---",
+             $" {board[6]} | {board[7]} | {board[8]} ",
+             ""
+        };
+
+        foreach (var row in rows)
+        {
+            writer_1.WriteLine(row);
+            writer_2.WriteLine(row);
+        }
+    }
+
+    private bool Win_Check(char[] board, char symbol)
+    {
+        int[,] winning_positions = new int[,]
+        {
+            // Winning Rows
+            {0, 1, 2}, {3, 4, 5}, {6, 7, 8},
+            // Winning Columns
+            {0, 3, 6}, {1, 4, 7}, {2, 5, 8},
+            // Winning Diagonals
+            { 0, 4, 8}, {2, 4 ,6}
+        };
+
+        for (int i = 0; i < winning_positions.GetLength(0); i++)
+        {
+            if (board[winning_positions[i, 0]] == symbol &&
+                board[winning_positions[i, 1]] == symbol &&
+                board[winning_positions[i, 2]] == symbol)
+            {
+                return true;
+
+            }
+        }
+
+        return false;
+
+    }
+
+    private bool Is_Board_Full(char[] board)
+    {
+        foreach (char character in board)
+        {
+            if (character != 'X' && character != 'O')
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
+}
+
 // public class TCP_TicTacToe_Server
 // {
-//     // This class helps implement logic for a basic client-server game of tic-tac-toe
 //     private TcpListener _listener;
 
 //     public void Start_Server(int port)
@@ -373,7 +602,7 @@ public class TCP_File_Transfer_Server
 //         _listener = new TcpListener(IPAddress.Any, port);
 //         _listener.Start();
 
-//         Console.WriteLine($"The Tic Tac Toe Server has Started.\n Waiting for player...");
+//         Console.WriteLine("The Tic Tac Toe Server has Started.\nWaiting for players...");
 
 //         Thread accept_thread = new Thread(Accept_Clients);
 //         accept_thread.Start();
@@ -385,145 +614,141 @@ public class TCP_File_Transfer_Server
 //         {
 //             try
 //             {
-//                 TcpClient client = _listener.AcceptTcpClient();
-//                 Console.WriteLine("A player connected for Tic Tac Toe.");
+//                 TcpClient player1 = _listener.AcceptTcpClient();
+//                 Console.WriteLine("Player 1 connected.");
 
-//                 Thread client_thread = new Thread(() => Handle_Client(client));
-//                 client_thread.Start();
+//                 TcpClient player2 = _listener.AcceptTcpClient();
+//                 Console.WriteLine("Player 2 connected.");
+
+//                 Thread game_thread = new Thread(() => Handle_Game(player1, player2));
+//                 game_thread.Start();
 //             }
 //             catch (Exception ex)
 //             {
-//                 Console.WriteLine("There was an error accepting the client: " + ex.Message);
+//                 Console.WriteLine("Error accepting players: " + ex.Message);
 //             }
 //         }
 //     }
 
-//     private void Handle_Client(TcpClient client)
+//     private void Handle_Game(TcpClient player1, TcpClient player2)
 //     {
-//         NetworkStream client_stream = client.GetStream();
-//         StreamReader client_reader = new StreamReader(client_stream);
-//         StreamWriter client_writer = new StreamWriter(client_stream) { AutoFlush = true };
+//         NetworkStream stream1 = player1.GetStream();
+//         StreamReader reader1 = new StreamReader(stream1);
+//         StreamWriter writer1 = new StreamWriter(stream1) { AutoFlush = true };
 
-//         // This initialises the game board
-//         // Characters 1-9 will be used to represent the different squares on the Grid
-//         char[] board_state = "123456789".ToCharArray();
-//         char player_symbol = 'X';
-//         char server_symbol = 'O';
-//         bool game_ended = false;
+//         NetworkStream stream2 = player2.GetStream();
+//         StreamReader reader2 = new StreamReader(stream2);
+//         StreamWriter writer2 = new StreamWriter(stream2) { AutoFlush = true };
 
-//         client_writer.WriteLine("Welcome to Tic Tac Toe!");
-//         client_writer.WriteLine("You are X, server is O.");
-//         Display_Board(client_writer, board_state);
+//         char[] board = "123456789".ToCharArray();
+//         char symbol1 = 'X';
+//         char symbol2 = 'O';
+//         bool gameEnded = false;
 
-//         Random rnd = new Random();
+//         writer1.WriteLine("Welcome Player 1. You are X.");
+//         writer2.WriteLine("Welcome Player 2. You are O.");
+//         Broadcast_Board(writer1, writer2, board);
 
-//         while (!game_ended)
+//         StreamReader currentReader = reader1;
+//         StreamWriter currentWriter = writer1;
+//         StreamWriter opponentWriter = writer2;
+//         char currentSymbol = symbol1;
+
+//         while (!gameEnded)
 //         {
-//             // I need to ask the Client for their move every turn so will need to be using the client reader
-//             client_writer.WriteLine("Your move (1-9):");
-//             string move_input = client_reader.ReadLine();
+//             currentWriter.WriteLine("Your move (1-9):");
+//             opponentWriter.WriteLine("Waiting for opponent to move...");
 
-//             if (move_input == null)
+//             string move = currentReader.ReadLine();
+//             if (move == null)
 //             {
-//                 // Need to handle errors gracefully
-//                 Console.WriteLine("Player disconnected unexpectedly.");
+//                 currentWriter.WriteLine("Connection lost.");
+//                 opponentWriter.WriteLine("Opponent disconnected. You win by default.");
 //                 break;
 //             }
 
-//             if (!int.TryParse(move_input, out int player_move) || player_move < 1 || player_move > 9)
+//             if (!int.TryParse(move, out int position) || position < 1 || position > 9)
 //             {
-//                 // Rejects invalid player moves
-//                 client_writer.WriteLine("Invalid input. Please enter a number between 1 and 9.");
+//                 currentWriter.WriteLine("Invalid input. Please enter a number between 1 and 9.");
 //                 continue;
 //             }
 
-//             if (board_state[player_move - 1] == 'X' || board_state[player_move - 1] == 'O')
+//             if (board[position - 1] == 'X' || board[position - 1] == 'O')
 //             {
-//                 // Prevents overwritting a square on a grid
-//                 client_writer.WriteLine("That spot is already taken. Try again.");
+//                 currentWriter.WriteLine("That spot is already taken. Try again.");
 //                 continue;
 //             }
 
-//             board_state[player_move - 1] = player_symbol;
-//             Display_Board(client_writer, board_state);
+//             board[position - 1] = currentSymbol;
+//             Broadcast_Board(writer1, writer2, board);
 
-//             // Now I need to check if a plyer has won or if the game has ended in a tie
-//             if (Check_Win(board_state, player_symbol))
+//             if (Check_Win(board, currentSymbol))
 //             {
-//                 client_writer.WriteLine("Congratulations, you win!");
-//                 game_ended = true;
+//                 currentWriter.WriteLine("Congratulations, you win!");
+//                 opponentWriter.WriteLine("You lose! Better luck next time.");
+//                 gameEnded = true;
 //                 break;
 //             }
 
-//             if (Is_Board_Full(board_state))
+//             if (Is_Board_Full(board))
 //             {
-//                 client_writer.WriteLine("Game ended in a draw!");
-//                 game_ended = true;
+//                 writer1.WriteLine("Game ended in a draw!");
+//                 writer2.WriteLine("Game ended in a draw!");
 //                 break;
 //             }
 
-//             // Whilst I would have liked to implement AI into this, I haven't yet figured it out
-//             // Therefor the server makes random moves
-//             List<int> available_moves = new List<int>();
-//             for (int i = 0; i < 9; i++)
+//             // Swap turn
+//             if (currentReader == reader1)
 //             {
-//                 if (board_state[i] != 'X' && board_state[i] != 'O')
-//                     available_moves.Add(i);
+//                 currentReader = reader2;
+//                 currentWriter = writer2;
+//                 opponentWriter = writer1;
+//                 currentSymbol = symbol2;
 //             }
-
-//             if (available_moves.Count == 0)
+//             else
 //             {
-//                 client_writer.WriteLine("Game ended in a draw!");
-//                 game_ended = true;
-//                 break;
-//             }
-
-//             int server_move = available_moves[rnd.Next(available_moves.Count)];
-//             board_state[server_move] = server_symbol;
-
-//             client_writer.WriteLine("Server made its move:");
-//             Display_Board(client_writer, board_state);
-
-//             if (Check_Win(board_state, server_symbol))
-//             {
-//                 client_writer.WriteLine("Server wins! Better luck next time.");
-//                 game_ended = true;
-//                 break;
-//             }
-
-//             if (Is_Board_Full(board_state))
-//             {
-//                 client_writer.WriteLine("Game ended in a draw!");
-//                 game_ended = true;
-//                 break;
+//                 currentReader = reader1;
+//                 currentWriter = writer1;
+//                 opponentWriter = writer2;
+//                 currentSymbol = symbol1;
 //             }
 //         }
 
-//         client_writer.WriteLine("Game over. Disconnecting...");
-//         client_stream.Close();
-//         client.Close();
-//         Console.WriteLine("Player disconnected from Tic Tac Toe.");
+//         writer1.WriteLine("Game over. Disconnecting...");
+//         writer2.WriteLine("Game over. Disconnecting...");
+//         stream1.Close(); stream2.Close();
+//         player1.Close(); player2.Close();
+
+//         Console.WriteLine("A game session has ended.");
 //     }
 
-//     private void Display_Board(StreamWriter writer, char[] board)
+//     private void Broadcast_Board(StreamWriter w1, StreamWriter w2, char[] board)
 //     {
-//         writer.WriteLine();
-//         writer.WriteLine($" {board[0]} | {board[1]} | {board[2]} ");
-//         writer.WriteLine("---+---+---");
-//         writer.WriteLine($" {board[3]} | {board[4]} | {board[5]} ");
-//         writer.WriteLine("---+---+---");
-//         writer.WriteLine($" {board[6]} | {board[7]} | {board[8]} ");
-//         writer.WriteLine();
+//         string[] lines =
+//         {
+//             "",
+//             $" {board[0]} | {board[1]} | {board[2]} ",
+//             "---+---+---",
+//             $" {board[3]} | {board[4]} | {board[5]} ",
+//             "---+---+---",
+//             $" {board[6]} | {board[7]} | {board[8]} ",
+//             ""
+//         };
+
+//         foreach (var line in lines)
+//         {
+//             w1.WriteLine(line);
+//             w2.WriteLine(line);
+//         }
 //     }
 
 //     private bool Check_Win(char[] board, char symbol)
 //     {
 //         int[,] winning_positions = new int[,]
 //         {
-//             // This contains the different winning positions
-//             { 0,1,2}, {3,4,5}, {6,7,8}, // 3 in a row
-//             {0,3,6}, {1,4,7}, {2,5,8}, // 3 in a column
-//             {0,4,8}, {2,4,6}           //  3 diagonally
+//             { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 }, // Rows
+//             { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, // Columns
+//             { 0, 4, 8 }, { 2, 4, 6 }              // Diagonals
 //         };
 
 //         for (int i = 0; i < winning_positions.GetLength(0); i++)
@@ -547,186 +772,6 @@ public class TCP_File_Transfer_Server
 //         return true;
 //     }
 // }
-
-public class TCP_TicTacToe_Server
-{
-    private TcpListener _listener;
-
-    public void Start_Server(int port)
-    {
-        _listener = new TcpListener(IPAddress.Any, port);
-        _listener.Start();
-
-        Console.WriteLine("The Tic Tac Toe Server has Started.\nWaiting for players...");
-
-        Thread accept_thread = new Thread(Accept_Clients);
-        accept_thread.Start();
-    }
-
-    private void Accept_Clients()
-    {
-        while (true)
-        {
-            try
-            {
-                TcpClient player1 = _listener.AcceptTcpClient();
-                Console.WriteLine("Player 1 connected.");
-
-                TcpClient player2 = _listener.AcceptTcpClient();
-                Console.WriteLine("Player 2 connected.");
-
-                Thread game_thread = new Thread(() => Handle_Game(player1, player2));
-                game_thread.Start();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Error accepting players: " + ex.Message);
-            }
-        }
-    }
-
-    private void Handle_Game(TcpClient player1, TcpClient player2)
-    {
-        NetworkStream stream1 = player1.GetStream();
-        StreamReader reader1 = new StreamReader(stream1);
-        StreamWriter writer1 = new StreamWriter(stream1) { AutoFlush = true };
-
-        NetworkStream stream2 = player2.GetStream();
-        StreamReader reader2 = new StreamReader(stream2);
-        StreamWriter writer2 = new StreamWriter(stream2) { AutoFlush = true };
-
-        char[] board = "123456789".ToCharArray();
-        char symbol1 = 'X';
-        char symbol2 = 'O';
-        bool gameEnded = false;
-
-        writer1.WriteLine("Welcome Player 1. You are X.");
-        writer2.WriteLine("Welcome Player 2. You are O.");
-        Broadcast_Board(writer1, writer2, board);
-
-        StreamReader currentReader = reader1;
-        StreamWriter currentWriter = writer1;
-        StreamWriter opponentWriter = writer2;
-        char currentSymbol = symbol1;
-
-        while (!gameEnded)
-        {
-            currentWriter.WriteLine("Your move (1-9):");
-            opponentWriter.WriteLine("Waiting for opponent to move...");
-
-            string move = currentReader.ReadLine();
-            if (move == null)
-            {
-                currentWriter.WriteLine("Connection lost.");
-                opponentWriter.WriteLine("Opponent disconnected. You win by default.");
-                break;
-            }
-
-            if (!int.TryParse(move, out int position) || position < 1 || position > 9)
-            {
-                currentWriter.WriteLine("Invalid input. Please enter a number between 1 and 9.");
-                continue;
-            }
-
-            if (board[position - 1] == 'X' || board[position - 1] == 'O')
-            {
-                currentWriter.WriteLine("That spot is already taken. Try again.");
-                continue;
-            }
-
-            board[position - 1] = currentSymbol;
-            Broadcast_Board(writer1, writer2, board);
-
-            if (Check_Win(board, currentSymbol))
-            {
-                currentWriter.WriteLine("Congratulations, you win!");
-                opponentWriter.WriteLine("You lose! Better luck next time.");
-                gameEnded = true;
-                break;
-            }
-
-            if (Is_Board_Full(board))
-            {
-                writer1.WriteLine("Game ended in a draw!");
-                writer2.WriteLine("Game ended in a draw!");
-                break;
-            }
-
-            // Swap turn
-            if (currentReader == reader1)
-            {
-                currentReader = reader2;
-                currentWriter = writer2;
-                opponentWriter = writer1;
-                currentSymbol = symbol2;
-            }
-            else
-            {
-                currentReader = reader1;
-                currentWriter = writer1;
-                opponentWriter = writer2;
-                currentSymbol = symbol1;
-            }
-        }
-
-        writer1.WriteLine("Game over. Disconnecting...");
-        writer2.WriteLine("Game over. Disconnecting...");
-        stream1.Close(); stream2.Close();
-        player1.Close(); player2.Close();
-
-        Console.WriteLine("A game session has ended.");
-    }
-
-    private void Broadcast_Board(StreamWriter w1, StreamWriter w2, char[] board)
-    {
-        string[] lines =
-        {
-            "",
-            $" {board[0]} | {board[1]} | {board[2]} ",
-            "---+---+---",
-            $" {board[3]} | {board[4]} | {board[5]} ",
-            "---+---+---",
-            $" {board[6]} | {board[7]} | {board[8]} ",
-            ""
-        };
-
-        foreach (var line in lines)
-        {
-            w1.WriteLine(line);
-            w2.WriteLine(line);
-        }
-    }
-
-    private bool Check_Win(char[] board, char symbol)
-    {
-        int[,] winning_positions = new int[,]
-        {
-            { 0, 1, 2 }, { 3, 4, 5 }, { 6, 7, 8 }, // Rows
-            { 0, 3, 6 }, { 1, 4, 7 }, { 2, 5, 8 }, // Columns
-            { 0, 4, 8 }, { 2, 4, 6 }              // Diagonals
-        };
-
-        for (int i = 0; i < winning_positions.GetLength(0); i++)
-        {
-            if (board[winning_positions[i, 0]] == symbol &&
-                board[winning_positions[i, 1]] == symbol &&
-                board[winning_positions[i, 2]] == symbol)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private bool Is_Board_Full(char[] board)
-    {
-        foreach (char c in board)
-        {
-            if (c != 'X' && c != 'O') return false;
-        }
-        return true;
-    }
-}
 
 
 

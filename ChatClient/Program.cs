@@ -35,8 +35,8 @@ public class Messaging_Client
         // This loop continuously reads user input and sends it to the server
         // Without it, the client would exit immediately after connecting
 
-        Thread readThread = new Thread(Read_Messages);
-        readThread.Start();
+        Thread read_thread = new Thread(Read_Messages);
+        read_thread.Start();
 
         while (true)
         {
@@ -271,81 +271,89 @@ public class File_Transfer_Client
 
 }
 
-public class TCP_TicTacToe_Client
+// To further extend the usability of my application, I have integrated the ability to play tic tac toe betweent two clients
+public class TCP_TicTacToe_Client()
 {
     private TcpClient client;
-    private StreamReader client_reader;
-    private StreamWriter client_writer;
-    private NetworkStream client_stream;
+    private StreamReader reader;
+    private StreamWriter writer;
+    private NetworkStream stream;
+
+    // Will act as flag
     private bool is_running = true;
 
-    public void Connect_To_Server(string server_ip, int server_port)
+    public void Connect_To_Server(string IPAddress, int port)
     {
-        try
+        client = new TcpClient(IPAddress, port);
+        stream = client.GetStream();
+        reader = new StreamReader(stream);
+        writer = new StreamWriter(stream) { AutoFlush = true };
+
+        Console.WriteLine("You have connected successfully to the Server!");
+        Thread read_thread = new Thread(Read_Write_Thread);
+        read_thread.Start();
+
+        while (is_running)
         {
-            client = new TcpClient(server_ip, server_port);
-            client_stream = client.GetStream();
-            client_reader = new StreamReader(client_stream);
-            client_writer = new StreamWriter(client_stream) { AutoFlush = true };
-
-            Console.WriteLine("You have connected successfully to the Server");
-
-            Thread receive_thread = new Thread(Receive_Messages);
-            receive_thread.Start();
-
-            while (is_running)
+            string user_input = Console.ReadLine().Trim().ToLower();
+            if (user_input == "exit")
             {
-                string user_input = Console.ReadLine();
+                Console.WriteLine("Disconnecting from Tic Tac Toe Server.....");
+                Disconnect();
+                break;
+            }
 
-                if (user_input.Trim().ToLower() == "exit")
-                {
-                    Console.WriteLine("Disconnecting from the Tic Tac Toe Server");
-                    Disconnect();
-                    break;
-                }
-
-                if (!string.IsNullOrWhiteSpace(user_input))
-                {
-                    client_writer.WriteLine(user_input);
-                }
+            if (!string.IsNullOrWhiteSpace(user_input))
+            {
+                writer.WriteLine(user_input);
             }
         }
 
-        catch (Exception ex)
-        {
-            Console.WriteLine("You have failed to connect or lost connection to the Server");
-            Disconnect();
-        }
     }
 
-    private void Receive_Messages()
+    private void Read_Write_Thread()
     {
+        // The client code is pretty simple
+        // They just need to be able to see the Game State and enter their move
+        // Basically Receive and Send data hence the name Read_Write_Thread
         try
         {
             string server_message;
 
-            while ((server_message = client_reader.ReadLine()) != null)
+            // As long as the server is online
+            while ((server_message = reader.ReadLine()) != null)
             {
                 Console.WriteLine(server_message);
 
                 if (server_message.ToLower().Contains("your move"))
                 {
-                    Console.Write("Enter your move (1-9): ");
+                    Console.Write("Enter your move, 1-9: ");
                 }
+
+                // If the game ends by:
+                // Opponent Winning
+                // Player Winning
+                // A Draw
+                // A player Disconnects
+                // The game flag isRunning becomes false
+                // I should probably replace this with an array or something
 
                 if (server_message.ToLower().Contains("game over") ||
                     server_message.ToLower().Contains("you win") ||
+                    server_message.ToLower().Contains("you lose") ||
                     server_message.ToLower().Contains("draw") ||
-                    server_message.ToLower().Contains("server wins"))
+                    server_message.ToLower().Contains("opponent disconnected"))
                 {
                     is_running = false;
                 }
+
             }
+
         }
 
         catch (Exception ex)
         {
-            Console.WriteLine("You have beend disconnected from the Server: " + ex.Message);
+            Console.WriteLine("You have disconnected from the server: " + ex.Message);
         }
 
         finally
@@ -356,108 +364,13 @@ public class TCP_TicTacToe_Client
 
     private void Disconnect()
     {
-        client_stream.Close();
-        client_reader.Close();
-        client_writer.Close();
-        client.Close();
+        stream?.Close();
+        writer?.Close();
+        reader?.Close();
+        client?.Close();
         Environment.Exit(0);
     }
 }
-
-// public class TCP_TicTacToe_Client
-// {
-//     private TcpClient client;
-//     private StreamReader client_reader;
-//     private StreamWriter client_writer;
-//     private NetworkStream client_stream;
-//     private bool is_running = true;
-
-//     public void Connect_To_Server(string server_ip, int server_port)
-//     {
-//         try
-//         {
-//             client = new TcpClient(server_ip, server_port);
-//             client_stream = client.GetStream();
-//             client_reader = new StreamReader(client_stream);
-//             client_writer = new StreamWriter(client_stream) { AutoFlush = true };
-
-//             Console.WriteLine("You have connected successfully to the Server");
-
-//             Thread receive_thread = new Thread(Receive_Messages);
-//             receive_thread.Start();
-
-//             while (is_running)
-//             {
-//                 string user_input = Console.ReadLine();
-
-//                 if (user_input.Trim().ToLower() == "exit")
-//                 {
-//                     Console.WriteLine("Disconnecting from the Tic Tac Toe Server");
-//                     Disconnect();
-//                     break;
-//                 }
-
-//                 if (!string.IsNullOrWhiteSpace(user_input))
-//                 {
-//                     client_writer.WriteLine(user_input);
-//                 }
-//             }
-//         }
-
-//         catch (Exception ex)
-//         {
-//             Console.WriteLine("You have failed to connect or lost connection to the Server");
-//             Disconnect();
-//         }
-//     }
-
-//     private void Receive_Messages()
-//     {
-//         try
-//         {
-//             string server_message;
-
-//             while ((server_message = client_reader.ReadLine()) != null)
-//             {
-//                 Console.WriteLine(server_message);
-
-//                 if (server_message.ToLower().Contains("your move"))
-//                 {
-//                     Console.Write("Enter your move (1-9): ");
-//                 }
-
-//                 if (server_message.ToLower().Contains("game over") ||
-//                     server_message.ToLower().Contains("you win") ||
-//                     server_message.ToLower().Contains("draw") ||
-//                     server_message.ToLower().Contains("you lose") ||
-//                     server_message.ToLower().Contains("opponent disconnected"))
-//                 {
-//                     is_running = false;
-//                 }
-//             }
-//         }
-
-//         catch (Exception ex)
-//         {
-//             Console.WriteLine("You have been disconnected from the Server: " + ex.Message);
-//         }
-
-//         finally
-//         {
-//             Disconnect();
-//         }
-//     }
-
-//     private void Disconnect()
-//     {
-//         client_stream?.Close();
-//         client_reader?.Close();
-//         client_writer?.Close();
-//         client?.Close();
-//         Environment.Exit(0);
-//     }
-// }
-
 
 
 class Program
