@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj": {}
+    "C:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj": {}
   },
   "projects": {
-    "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj": {
+    "C:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj",
+        "projectUniqueName": "C:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj",
         "projectName": "ChatServer",
-        "projectPath": "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj",
+        "projectPath": "C:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\ChatServer.csproj",
         "packagesPath": "C:\\Users\\Abubaker\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\obj\\",
+        "outputPath": "C:\\Users\\Abubaker\\Desktop\\Files\\Coding\\ChatApp\\ChatServer\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -61,12 +61,31 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[9.0.6, 9.0.6]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[9.0.6, 9.0.6]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[9.0.6, 9.0.6]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.301/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }
